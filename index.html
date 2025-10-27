@@ -1,89 +1,379 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Site Protegido</title>
-<!-- Fonte Press Start 2P -->
+
+<!-- Fonte -->
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: #000;
-        color: #fff;
-        font-family: 'Press Start 2P', cursive;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        flex-direction: column;
-        text-align: center;
-    }
-    input, button {
-        font-family: 'Press Start 2P', cursive;
-        margin-top: 20px;
-        padding: 10px;
-        background: none;
-        border: 2px solid #fff;
-        color: #fff;
-        cursor: pointer;
-    }
-    img {
-        max-width: 80%;
-        margin: 20px 0;
-    }
+  :root{
+    --bg:#000;
+    --fg:#fff;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--fg);
+    font-family: 'Press Start 2P', monospace;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:20px;
+  }
+
+  /* Container principal centralizado */
+  .wrap{
+    width:100%;
+    max-width:900px;
+  }
+
+  /* Login */
+  #loginBox{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  input[type="password"]{
+    background:transparent;
+    border:2px solid var(--fg);
+    color:var(--fg);
+    padding:12px 14px;
+    outline:none;
+    font-family:inherit;
+    font-size:12px;
+    width:320px;
+    box-sizing:border-box;
+  }
+  /* botões quadrados, sem borda arredondada */
+  button{
+    margin-top:16px;
+    padding:10px 14px;
+    background:transparent;
+    border:2px solid var(--fg);
+    color:var(--fg);
+    cursor:pointer;
+    font-family:inherit;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  /* som toggle no canto */
+  #soundToggle{
+    position:fixed;
+    right:12px;
+    top:12px;
+    background:transparent;
+    border:2px solid var(--fg);
+    padding:8px;
+  }
+
+  /* Conteúdo protegido (oculto por padrão) */
+  #content{
+    display:none;
+    opacity:0;
+    transition:opacity .45s ease;
+    flex-direction:column;
+    align-items:center;
+  }
+  #content.show{ display:flex; opacity:1; }
+
+  /* Imagem responsiva, com limite */
+  #mainImage{
+    max-width:80%;
+    max-height:45vh;
+    object-fit:contain;
+    border:2px solid var(--fg);
+    margin-bottom:18px;
+  }
+
+  /* Title abaixo da imagem */
+  #title{
+    font-size:14px;
+    margin:8px 0 20px 0;
+    line-height:1.1;
+    max-width:900px;
+  }
+
+  #text{
+    font-size:10px;
+    max-width:820px;
+    white-space:pre-wrap; /* permite quebras */
+    text-align:center;
+  }
+
+  /* Fake terminal overlay */
+  #terminal{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#000;
+    z-index:40;
+    color:var(--fg);
+    font-family:inherit;
+    font-size:11px;
+    visibility:hidden;
+  }
+  #terminal.show{ visibility:visible; }
+
+  /* pequena responsividade */
+  @media (max-width:420px){
+    input[type="password"]{ width:90%; }
+    #title{ font-size:9px; }
+    #text{ font-size:8px; }
+  }
 </style>
 </head>
 <body>
 
-<div id="loginDiv">
-    <input type="password" id="passwordInput" placeholder="Digite a senha">
-    <button onclick="checkPassword()">Entrar</button>
+<div class="wrap">
+
+  <!-- Som on/off -->
+  <button id="soundToggle" aria-pressed="true">🔊 Som</button>
+
+  <!-- Login -->
+  <div id="loginBox" aria-hidden="false">
+    <input id="passwordInput" type="password" placeholder="Digite a senha" autocomplete="off" />
+    <div style="display:flex; gap:12px; justify-content:center; margin-top:8px;">
+      <button id="enterBtn">Entrar</button>
+      <button id="clearBtn">Limpar</button>
+    </div>
+  </div>
+
+  <!-- Conteúdo protegido -->
+  <div id="content" aria-hidden="true" role="region">
+    <img id="mainImage" src="" alt="" />
+    <h1 id="title"></h1>
+    <div id="text"></div>
+  </div>
 </div>
 
-<div id="contentDiv" style="display:none;">
-    <h1 id="customTitle"></h1>
-    <img id="customImage" src="" alt="Imagem">
-    <p id="customText"></p>
+<!-- Fake terminal -->
+<div id="terminal" role="status" aria-live="polite">
+  <div>
+    <div id="termLine">Verificando credenciais...</div>
+  </div>
 </div>
-
-<!-- Efeito sonoro -->
-<audio id="clickSound" src="click.mp3"></audio>
 
 <script>
-    // ========== VARIÁVEIS FÁCEIS DE ALTERAR ==========
-    const senhaCorreta = "12345";  // <-- Alterar a senha aqui
-    const titulo = "Bem-vindo à Estética Minimalista";  // <-- Alterar o título aqui
-    const texto = "Este é um texto personalizável sobre estética. Pode ser grande ou pequeno.";  // <-- Alterar o texto aqui
-    const imagemLocal = "zero.jpg"; // <-- Se quiser colocar imagem fixa, coloque o caminho aqui, ex: "img/foto.png"
-    // ================================================
+/* =========================
+   VARIÁVEIS FÁCEIS DE ALTERAR
+   ========================= */
 
-    // Função para detectar automaticamente a primeira imagem da pasta, se imagemLocal estiver vazio
-    function autoDetectImage() {
-        if(imagemLocal !== "") return imagemLocal;
-        const files = ["image1.png","image2.jpg","image3.jpeg"]; // <-- Coloque os nomes dos arquivos da pasta aqui
-        return files.length > 0 ? files[0] : "";
-    }
+const CONFIG = {
+  senha: "minhaSenha123",             // <-- altere AQUI a senha
+  titulo: "Bem-vindo à Estética Minimalista", // <-- altere o título (aparece abaixo da imagem)
+  texto: `Este é um texto sobre estética.
+Você pode colocar várias linhas.
+Tamanho: livre.`,                     // <-- altere o texto (qualquer tamanho)
+  imageCandidates: [                   // <-- nomes que o script tentará achar automaticamente
+    "cover.png","cover.jpg","banner.png","banner.jpg",
+    "image.png","image.jpg","img.png","img.jpg",
+    "foto.png","foto.jpg","principal.png","principal.jpg"
+  ],
+  placeholderSVG: null,                // <-- opcional: coloque um data URL se quiser placeholder custom
+  autofocus: true,                     // <-- true: foco automático no campo
+  terminalDelayMs: 800,                // <-- tempo do fake terminal (ms)
+  enableTypingEffect: true,            // <-- true pra efeito de digitação no texto
+  typingSpeed: 18                      // <-- ms por caractere (quanto menor, mais rápido)
+};
 
-    function playClick() {
-        document.getElementById("clickSound").play();
-    }
+/* =========================
+   FIM DAS VARIÁVEIS (mude só acima)
+   ========================= */
 
-    function checkPassword() {
-        playClick();
-        const input = document.getElementById("passwordInput").value;
-        if(input === senhaCorreta) {
-            document.getElementById("loginDiv").style.display = "none";
-            document.getElementById("contentDiv").style.display = "block";
-            document.getElementById("customTitle").innerText = titulo;
-            document.getElementById("customText").innerText = texto;
-            document.getElementById("customImage").src = autoDetectImage();
-        } else {
-            alert("Senha incorreta!");
-        }
+/* UI refs */
+const pwInput = document.getElementById("passwordInput");
+const enterBtn = document.getElementById("enterBtn");
+const clearBtn = document.getElementById("clearBtn");
+const loginBox = document.getElementById("loginBox");
+const content = document.getElementById("content");
+const mainImage = document.getElementById("mainImage");
+const titleEl = document.getElementById("title");
+const textEl = document.getElementById("text");
+const terminal = document.getElementById("terminal");
+const termLine = document.getElementById("termLine");
+const soundToggle = document.getElementById("soundToggle");
+
+/* Autofocus */
+if(CONFIG.autofocus) {
+  pwInput.focus();
+}
+
+/* Sound: WebAudio-generated beeps (no arquivos necessários) */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let soundEnabled = true;
+
+function ensureAudioCtx(){
+  if(!audioCtx) audioCtx = new AudioCtx();
+}
+
+function beep(freq=880, duration=0.06, type='sine', gain=0.12){
+  if(!soundEnabled) return;
+  ensureAudioCtx();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = gain;
+  o.connect(g);
+  g.connect(audioCtx.destination);
+  o.start();
+  // envelope to avoid clicks
+  g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(gain, audioCtx.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+  o.stop(audioCtx.currentTime + duration + 0.02);
+}
+
+function clickSound(){ beep(2500,0.02,'square',0.06); }
+function successSound(){ beep(900,0.12,'sine',0.12); beep(1400,0.08,'sine',0.08); }
+function errorSound(){ beep(220,0.14,'sawtooth',0.16); }
+
+/* Sound toggle button */
+soundToggle.addEventListener('click', ()=>{
+  soundEnabled = !soundEnabled;
+  soundToggle.textContent = soundEnabled ? '🔊 Som' : '🔇 Som';
+  soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+});
+
+/* Enter key works */
+pwInput.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') { e.preventDefault(); enterAction(); }
+});
+
+/* Buttons */
+enterBtn.addEventListener('click', ()=>{ clickSound(); enterAction(); });
+clearBtn.addEventListener('click', ()=>{ clickSound(); pwInput.value=''; pwInput.focus(); });
+
+/* MAIN: when user submits password */
+async function enterAction(){
+  const v = pwInput.value;
+  // show fake terminal
+  showTerminal();
+  await sleep(CONFIG.terminalDelayMs);
+  hideTerminal();
+
+  if(v === CONFIG.senha){
+    successSound();
+    revealContent();
+  } else {
+    errorSound();
+    // efeito simples: piscar campo
+    pwInput.animate([{boxShadow:'0 0 0 0 rgba(255,255,255,0)'},{boxShadow:'0 0 8px 2px rgba(255,255,255,0.12)'}], {duration:240, iterations:1});
+    alert('Senha incorreta!');
+    pwInput.focus();
+  }
+}
+
+/* Terminal control */
+function showTerminal(){
+  terminal.classList.add('show');
+  termLine.textContent = 'Verificando credenciais...';
+}
+function hideTerminal(){
+  terminal.classList.remove('show');
+}
+
+/* Reveal protected content */
+async function revealContent(){
+  // populate title & text
+  titleEl.textContent = CONFIG.titulo;
+  // image detection:
+  const imgSrc = await detectImage();
+  mainImage.src = imgSrc;
+  mainImage.alt = CONFIG.titulo || 'Imagem';
+  // hide login, show content
+  loginBox.style.display = 'none';
+  content.classList.add('show');
+  content.setAttribute('aria-hidden','false');
+
+  // typing effect for text (optional)
+  if(CONFIG.enableTypingEffect){
+    await typeText(CONFIG.texto || '');
+  } else {
+    textEl.textContent = CONFIG.texto || '';
+  }
+
+  // focus for accessibility
+  mainImage.focus?.();
+}
+
+/* Typing effect implementation */
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function typeText(full){
+  textEl.textContent = '';
+  for(let i=0;i<full.length;i++){
+    textEl.textContent += full[i];
+    // short click sound for each few chars (not every char to avoid spam)
+    if(i%4===0) clickSound();
+    await sleep(CONFIG.typingSpeed);
+  }
+}
+
+/* Image autodetect: attempt fetch for each candidate; return first that exists */
+async function detectImage(){
+  // if user provided placeholder data URL, use it as fallback
+  const fallback = CONFIG.placeholderSVG || generatePlaceholderDataURL();
+  for(const name of CONFIG.imageCandidates){
+    try{
+      const res = await fetch(name, {method:'HEAD'});
+      if(res.ok) return name;
+    } catch(e){
+      // fetch HEAD might be blocked by GitHub Pages for some files sometimes,
+      // so attempt GET as fallback (but avoid downloading big files)
+      try{
+        const res2 = await fetch(name, {method:'GET'});
+        if(res2.ok) return name;
+      }catch(e2){}
     }
+  }
+  return fallback;
+}
+
+/* Simple lightweight SVG placeholder (white frame) as data URL */
+function generatePlaceholderDataURL(){
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450'>
+    <rect width='100%' height='100%' fill='black' stroke='white' stroke-width='6'/>
+    <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Press Start 2P,monospace' font-size='20' fill='white'>Sem imagem (coloque um arquivo na pasta)</text>
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+/* small helper to preload the first available image to avoid jank */
+async function preloadIfExists(src){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(src);
+    img.onerror = ()=>resolve(null);
+    img.src = src;
+  });
+}
+
+/* Optional: try to preload returned src (if it is a file), otherwise placeholder will already be dataURL */
+async function detectImage(){
+  const fallback = CONFIG.placeholderSVG || generatePlaceholderDataURL();
+  for(const name of CONFIG.imageCandidates){
+    try{
+      const test = await preloadIfExists(name);
+      if(test) return test;
+    }catch(e){}
+  }
+  return fallback;
+}
+
+/* Expose CONFIG for debugging in console (easy editing live) */
+window._SITE_CONFIG = CONFIG;
+
+/* --- End of script --- */
 </script>
-
 </body>
 </html>
